@@ -6,7 +6,7 @@ Python Ensemble Model for Emergency department Trauma Triage (EMETT).
 Naming Conventions
 ------------
 Follow the naming conventions of cookiecutter,
-> Follow a naming convention that shows the owner and the order the analysis was done in. We use the format <step>-<ghu> ser>-<description>.ipynb (e.g., 0.3-bull-visualize-distributions.ipynb
+> Follow a naming convention that shows the owner and the order the analysis was done in. We use the format `<step>-<ghu> ser>-<description>.ipynb` (e.g., `0.3-bull-visualize-distributions.ipynb`).
 
 Project Organization
 ------------

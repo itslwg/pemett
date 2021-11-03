@@ -3,6 +3,8 @@ pemett
 
 Python Ensemble Model for Emergency department Trauma Triage (EMETT).
 
+Work in progress! Porting from R in the `emett` package to python, as ensemble learning is more convenient with python.
+
 Naming Conventions
 ------------
 Follow the naming conventions of cookiecutter,

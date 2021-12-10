@@ -5,6 +5,8 @@ Python Ensemble Model for Emergency department Trauma Triage (EMETT).
 
 Work in progress! Porting from R in the `emett` package to python, as ensemble learning is more convenient with python.
 
+Part of the TTRIS project. Website: https://www.titco.org/projects
+
 Naming Conventions
 ------------
 Follow the naming conventions of cookiecutter,

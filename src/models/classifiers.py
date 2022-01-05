@@ -124,7 +124,7 @@ class StackedGeneralizationClassifier():
               respective classifier
         """
         if self.__i == 0 and self.__j == 0:
-            print("Inner loop:")
+            print("Inner loop, each loop:")
             for k in self.__n.index:
                 p = round(self.__n[k] / sum(self.__n) * 100, 2)
                 print("\tNumber of {c}'s: ~{v} ({p}%)".format(
@@ -194,7 +194,7 @@ class StackedGeneralizationClassifier():
                 if i == 0 and j == 0:
                     n = y_val.value_counts()
                     self.__n = n
-                    print("Outer loop:")
+                    print("Outer loop, each fold:")
                     for k in n.index:
                         p = round(n[k] / sum(n) * 100, 2)
                         print("\tNumber of {c}'s: ~{v} ({p}%)".format(

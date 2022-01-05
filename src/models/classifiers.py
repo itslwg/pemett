@@ -1,6 +1,8 @@
 import numpy as np
 import pandas as pd
+
 from tqdm.notebook import tqdm
+from sklearn.base import clone
 
 from sklearn.metrics import roc_auc_score
 from sklearn.model_selection import cross_val_predict, StratifiedKFold
@@ -19,9 +21,9 @@ class StackedGeneralizationClassifier():
         self.meta_clf = meta_clf
         self.verbose = verbose
         
-        # Final fitted classifiers
-        self.base_clfs__ = []
-        self.meta_clf__= meta_clf
+        # Copy classifiers for fitting
+        self.base_clfs_ = base_clfs
+        self.meta_clf_ = meta_clf
        
         # Splitting setup
         self.inner_folds = 3
@@ -51,21 +53,19 @@ class StackedGeneralizationClassifier():
             The StackedGeneralizationClassifier itself.
         """
         # Set the hyper hyper parameters of the base classifiers
-        for clfk in self.base_clfs.keys():
-            ks = [s for s in self.hyper_parameters.keys() if clfk in s]
+        for clf in self.base_clfs_:
+            nm = clf.__class__.__name__.lower()
+            ks = [s for s in self.hyper_parameters.keys() if nm in s]
             clf_params = {k.split("__", 1)[1]: self.hyper_parameters.get(k) for k in ks}
-            clf = self.base_clfs[clfk]
             clf.set_params(**clf_params)
-            self.base_clfs__.append(clf)
-    
         # Get meta features from features
         X_meta = self.cv_inner_loop(X = X, y = y)
         
         # Fit each base classifier to all features
-        self.base_clfs__ = [clf.fit(X, y) for clf in self.base_clfs__]
+        self.base_clfs_ = [clf.fit(X, y) for clf in self.base_clfs_]
 
         # Fit meta classifier to meta features of train
-        self.meta_clf__.fit(X_meta, y)
+        self.meta_clf_.fit(X_meta, y)
     
         return self
 
@@ -82,7 +82,7 @@ class StackedGeneralizationClassifier():
         """
         per_model_predictions = []
 
-        for clf in self.base_clfs__:
+        for clf in self.base_clfs_:
             prediction = clf.predict_proba(X)[:, 1]
             per_model_predictions.append(prediction[:, np.newaxis])
         
@@ -102,7 +102,7 @@ class StackedGeneralizationClassifier():
         """
         # Predict using validation meta features
         X_meta = self.predict_meta_features(X)
-        y_pred_con = self.meta_clf__.predict_proba(X_meta)
+        y_pred_con = self.meta_clf_.predict_proba(X_meta)
         y_pred_cut = pd.cut(
             x=y_pred_con[:, 1],
             bins=self.hyper_parameters["breaks"],
@@ -135,7 +135,7 @@ class StackedGeneralizationClassifier():
 
         X_meta = np.zeros((len(X.index), ))
 
-        for clf in self.base_clfs__:
+        for clf in self.base_clfs_:
             if self.verbose: print("Running predictions for " + str(clf))
             predictions = cross_val_predict(
                 estimator=clf,

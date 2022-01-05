@@ -53,7 +53,7 @@ class StackedGeneralizationClassifier():
         # Set the hyper hyper parameters of the base classifiers
         for clfk in self.base_clfs.keys():
             ks = [s for s in self.hyper_parameters.keys() if clfk in s]
-            clf_params = {k.split("__")[1]: self.hyper_parameters.get(k) for k in ks}
+            clf_params = {k.split("__", 1)[1]: self.hyper_parameters.get(k) for k in ks}
             clf = self.base_clfs[clfk]
             clf.set_params(**clf_params)
             self.base_clfs__.append(clf)

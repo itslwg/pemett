@@ -173,16 +173,6 @@ def cv_outer_loop(base_clfs: list, meta_clf: Callable,
     best_hyper_parameters = all_hyper_parameters[max_row]
     
     base_clfs_, meta_clf_ = base_clfs, meta_clf
-    # if refit: 
-    #     base_clfs_, meta_clf_, _ = fit(
-    #         base_clfs=base_clfs,
-    #         meta_clf=meta_clf,
-    #         inner_loop=inner_loop,
-    #         hyper_parameters=hyper_parameters,
-    #         X_train=X_train,
-    #         y_train=y_train,
-    #         verbose=verbose
-    #     )
     
     return base_clfs_, meta_clf_, best_hyper_parameters
 

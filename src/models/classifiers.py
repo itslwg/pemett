@@ -1,6 +1,8 @@
 import numpy as np
 import pandas as pd
 
+from typing import Optional, Callable
+
 from tqdm.notebook import tqdm
 from sklearn.base import clone
 
@@ -75,20 +77,24 @@ class StackedGeneralizationClassifier():
         return self
 
 
-    def predict_meta_features(self, X) -> np.ndarray:
+    def predict_meta_features(self, X: pd.DataFrame, 
+                              use_probas: Optional[bool] = None) -> np.ndarray:
         """Uses base classifiers to get meta features.
         
         Args:
             X: Features.
+            use_probas: Optional. If not None and True, predicts probabilities of 
+                1s. Else, gives predicted class.
         
         Returns:
             Meta features, i.e. the predicted probabilities by base
             classifiers.
         """
-        per_model_predictions = []
+        if use_probas is None: use_probas = self.use_probas
 
+        per_model_predictions = []
         for clf in self.base_clfs_:
-            prediction = clf.predict_proba(X)[:, 1]
+            prediction = clf.predict_proba(X)[:, 1] if use_probas else clf.predict(X)
             per_model_predictions.append(prediction[:, np.newaxis])
         
         predictions = np.hstack(per_model_predictions)
@@ -96,7 +102,7 @@ class StackedGeneralizationClassifier():
         return predictions
         
 
-    def predict(self, X) -> tuple:
+    def predict(self, X, use_probas: Optional[Callable] = True) -> tuple:
         """Predicts using meta classifier
         
         Args:
@@ -106,17 +112,27 @@ class StackedGeneralizationClassifier():
             Tuple of predicted proability of 1s and binned predictions.
         """
         # Predict using validation meta features
-        X_meta = self.predict_meta_features(X)
-        y_pred_con = self.meta_clf_.predict_proba(X_meta)
-        y_pred_cut = pd.cut(
-            x=y_pred_con[:, 1],
-            bins=self.hyper_parameters["breaks"],
-            labels=[0, 1, 2, 3],
-            right=True,
-            include_lowest=False
+        X_meta = self.predict_meta_features(X, use_probas = self.use_probas)
+        y_pred = (
+            self.meta_clf_.predict_proba(X_meta) if use_probas 
+            else self.meta_clf_.predict(X_meta)
         )
 
-        return y_pred_con[:, 1], np.array(y_pred_cut)
+        return_object = y_pred
+        if use_probas:
+            y_pred_cut = pd.cut(
+                x=y_pred[:, 1],
+                bins=self.hyper_parameters["breaks"],
+                labels=[0, 1, 2, 3],
+                right=True,
+                include_lowest=False
+            )
+            return_object = (
+                y_pred[:, 1],
+                np.array(y_pred_cut)
+            )
+
+        return return_object
 
     def cv_inner_loop(self, X: pd.DataFrame, y: pd.Series) -> np.ndarray:
         """Runs inner loop of k-fold cross-validation.
@@ -149,7 +165,7 @@ class StackedGeneralizationClassifier():
                 cv=self.inner_loop,
                 method="predict_proba" if self.use_probas else "predict"
             )
-            p = predictions[:, 1].flatten() if self.use_probas else predictions
+            p = predictions[:, 1] if self.use_probas else predictions
             X_meta.append(p)
 
         return np.column_stack(X_meta)

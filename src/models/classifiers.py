@@ -26,7 +26,7 @@ class StackedGeneralizationClassifier():
         self.meta_clf_ = meta_clf
        
         # Splitting setup
-        self.inner_folds = 3
+        self.inner_folds = 2
         self.outer_folds = 2
         self.inner_loop = StratifiedKFold(n_splits = self.inner_folds)
         self.outer_loop = StratifiedKFold(n_splits = self.outer_folds)
@@ -40,7 +40,7 @@ class StackedGeneralizationClassifier():
         # Helpers for logging
         self.__i = 0
         self.__j = 0
-        self.__n = None
+        self.__n = 0
 
     def fit(self, X: pd.DataFrame, y: pd.Series) -> object:
         """Fits the classifiers and the meta classifier.
@@ -133,7 +133,7 @@ class StackedGeneralizationClassifier():
                     p=p
                 ))
 
-        X_meta = np.zeros((len(X.index), ))
+        X_meta = []
 
         for clf in self.base_clfs_:
             if self.verbose: print("Running predictions for " + str(clf))
@@ -143,12 +143,9 @@ class StackedGeneralizationClassifier():
                 y=y,
                 cv=self.inner_loop
             )
-            if X_meta.any():
-                X_meta = np.hstack([X_meta, predictions[:, np.newaxis]])
-            else:
-                X_meta = predictions[:, np.newaxis]
-    
-        return X_meta
+            X_meta.append(predictions)
+
+        return np.column_stack(X_meta)
 
 
     def cv_outer_loop(self, all_hyper_parameters: list,

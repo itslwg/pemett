@@ -25,8 +25,8 @@ def plot_roc(y_true, y_pred):
     return p
 
 
-def plot_roc_base_clfs(y_preds, y_true, keys):
-    """Plot ROC for each base classifier."""
+def plot_roc_base_clfs(y_preds: np.ndarray, y_true: np.array, keys: list):
+    """Plots ROC for each base classifier."""
     def f(p, y_true):
         fpr, tpr, _ = roc_curve(y_true = y_true, y_score = p)
         a = np.column_stack((fpr, tpr))

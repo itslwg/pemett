@@ -14,11 +14,16 @@ class StackedGeneralizationClassifier():
     Args:
         base_clfs: Base classifiers.
         meta_clf: Meta classifier.
+        use_probas: If True, meta classifier is fitted to predicted
+            probabilities.
         verbose: If True, logging is used. E.g. when fitting model.
     """
-    def __init__(self, base_clfs, meta_clf, verbose: bool = False):
+    def __init__(self, base_clfs, meta_clf, 
+                 use_probas: bool = True,
+                 verbose: bool = False):
         self.base_clfs = base_clfs
         self.meta_clf = meta_clf
+        self.use_probas = use_probas
         self.verbose = verbose
         
         # Copy classifiers for fitting
@@ -141,9 +146,11 @@ class StackedGeneralizationClassifier():
                 estimator=clf,
                 X=X,
                 y=y,
-                cv=self.inner_loop
+                cv=self.inner_loop,
+                method="predict_proba" if self.use_probas else "predict"
             )
-            X_meta.append(predictions)
+            p = predictions[:, 1].flatten() if self.use_probas else predictions
+            X_meta.append(p)
 
         return np.column_stack(X_meta)
 

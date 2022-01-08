@@ -102,11 +102,13 @@ class StackedGeneralizationClassifier():
         return predictions
         
 
-    def predict(self, X, use_probas: Optional[Callable] = True) -> tuple:
+    def predict(self, X, use_probas: bool = True) -> tuple:
         """Predicts using meta classifier
         
         Args:
             X: Features from which to classify rows.
+            use_probas: If True, the probabilities are cut
+                using the best break points found in inner cv.
         
         Returns:
             Tuple of predicted proability of 1s and binned predictions.

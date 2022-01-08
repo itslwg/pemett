@@ -86,14 +86,32 @@ def compute_performance(y_prob: np.array, y_pred: np.array,
         average="macro"
     )
     r = dict(roc_auc = roc_auc, prec = prec, rec = rec)
-    if y_pred_cut is not None: 
+    if y_pred_cut is not None:
+        auc_metric_labels = ["auc_model_model", "auc_model_tc"]
+        # Calculate alternate aucs
+        roc_auc_cut = roc_auc_score(
+            y_true=y_true, 
+            y_score=y_pred_cut
+        )        
+        roc_auc_tc = roc_auc_score(
+            y_true=y_true, 
+            y_score=tc
+        )
+        auc_mm = roc_auc - roc_auc_cut
+        auc_mtc = roc_auc - roc_auc_tc
+        aucs = [auc_mm, auc_mtc]
+        # Calculate nri
         nri_metrics = ["nri", "nri_plus", "nri_minus"]
         nri = calculate_nri(
             y_true=y_true, 
             y_old=tc,
             y_new=y_pred_cut
         )
-        r = {**r, **{m: nri[m] for m in nri_metrics}}
+        r = {
+            **r,
+            **{ml: m for ml, m in zip(auc_metric_labels, aucs)},
+            **{m: nri[m] for m in nri_metrics}
+        }
 
     return r
 
@@ -147,17 +165,20 @@ def compute_metrics(X_train: pd.DataFrame, y_train: pd.Series,
     y_preds = np.column_stack((y_test_pred_clfs, y_test_pred_meta_clf))
     y_probs = np.column_stack((y_test_prob_clfs, y_test_prob_con))
     
-    ds = {key: compute_performance(y_prob=prob, y_pred=pred, y_true=y_test)
-         for prob, pred, key in zip(y_probs.T, y_preds.T, keys)
-    }
-    ## Compute nri for the meta classifier
-    nri_metrics = ["nri", "nri_plus", "nri_minus"]
-    nri = calculate_nri(
-        y_true=y_test, 
-        y_old=tc,
-        y_new=y_test_prob_cut
-    )
-    ds[keys[-1]] = {**ds[keys[-1]], **{m: nri[m] for m in nri_metrics}}
+    # Helper for calculating performance
+    y_test_prob_cuts = [None] * (len(keys) - 1) + [y_test_prob_cut]
+    ds = {key: compute_performance(
+            y_prob=prob, 
+            y_pred=pred, 
+            y_true=y_test,
+            y_pred_cut=cut,
+            tc=tc
+        ) for prob, pred, key, cut in zip(
+            y_probs.T, 
+            y_preds.T, 
+            keys,
+            y_test_prob_cuts
+    )}
     
     return ds
 
@@ -169,17 +190,19 @@ def boot_compute_metrics(X: pd.DataFrame, y: pd.Series,
                          all_hyper_parameters: list):
     """Helper to refactor compute_metrics."""
     # Prepare training and test sets
-    X_train = resample(X, n_samples=training_size)
+    X_train = resample(X, n_samples=training_size, stratify=y)
     y_train = y.loc[X_train.index]
+    tc_train = tc.loc[X_train.index]
     X_test = X.loc[~X.index.isin(X_train.index), :]
     y_test = y.loc[X_test.index]
+    tc_test = tc.loc[X_test.index]
 
     return compute_metrics(
         X_train=X_train,
         y_train=y_train, 
         X_test=X_test, 
         y_test=y_test, 
-        tc=tc,
+        tc=tc_test,
         keys=keys,
         base_clfs=base_clfs,
         meta_clf=meta_clf,
@@ -209,6 +232,7 @@ def bootstrap(X: pd.DataFrame, y: pd.Series, tc: pd.Series,
     """
     # Numbef of samples in training samples
     training_size = int(len(X.index) * train_size)
+    # [boot_compute_metrics(X, y, tc, training_size, keys, base_clfs, meta_clf, all_hyper_parameters) for i in tqdm(range(N))]
     return Parallel(n_jobs=n_jobs)(delayed(boot_compute_metrics)(X, y, tc, training_size, keys, base_clfs, meta_clf, all_hyper_parameters) for i in tqdm(range(N)))
 
 

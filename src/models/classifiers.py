@@ -144,20 +144,20 @@ class StackedGeneralizationClassifier():
           Array where each column correspond to the predictions by each
               respective classifier
         """
-        if self.__i == 0 and self.__j == 0:
-            print("Inner loop, each loop:")
-            for k in self.__n.index:
-                p = round(self.__n[k] / sum(self.__n) * 100, 2)
-                print("\tNumber of {c}'s: ~{v} ({p}%)".format(
-                    c=round(k),
-                    v=round(self.__n[k] / self.inner_folds),
-                    p=p
-                ))
+        if self.verbose:
+            if self.__i == 0 and self.__j == 0:
+                print("Inner loop, each loop:")
+                for k in self.__n.index:
+                    p = round(self.__n[k] / sum(self.__n) * 100, 2)
+                    print("\tNumber of {c}'s: ~{v} ({p}%)".format(
+                        c=round(k),
+                        v=round(self.__n[k] / self.inner_folds),
+                        p=p
+                    ))
 
         X_meta = []
 
         for clf in self.base_clfs_:
-            if self.verbose: print("Running predictions for " + str(clf))
             predictions = cross_val_predict(
                 estimator=clf,
                 X=X,
@@ -211,15 +211,16 @@ class StackedGeneralizationClassifier():
                 y_val = y.iloc[val_index]
                 
                 # Number of each class w. percentage. Only first loop
-                if i == 0 and j == 0:
-                    n = y_val.value_counts()
-                    self.__n = n
-                    print("Outer loop, each fold:")
-                    for k in n.index:
-                        p = round(n[k] / sum(n) * 100, 2)
-                        print("\tNumber of {c}'s: ~{v} ({p}%)".format(
-                            c=round(k),v=n[k],p=p)
-                        )
+                if self.verbose:
+                    if i == 0 and j == 0:
+                        n = y_val.value_counts()
+                        self.__n = n
+                        print("Outer loop, each fold:")
+                        for k in n.index:
+                            p = round(n[k] / sum(n) * 100, 2)
+                            print("\tNumber of {c}'s: ~{v} ({p}%)".format(
+                                c=round(k),v=n[k],p=p)
+                            )
                 
                 self.fit(X = X_train, y = y_train)
                 y_pred_con, y_pred_cut = self.predict(X=X_val)

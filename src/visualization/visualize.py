@@ -63,4 +63,89 @@ def plot_precision_recall(y_true, y_pred):
     return p
 
 
+def prepare_triage_plot_df(df_model):
+    """Helper to create dataframe for plotting survivial within tc."""
+    a = (
+        df_model.groupby(["Label", "Category", "Target"])
+                .size()
+                .unstack()
+                .reset_index()
+                .melt(id_vars = ["Label", "Category"], value_vars=["0.0", "1.0"])
+    )
+    b = a.loc[a.Target == "1.0", :]
+    totals = a.groupby(["Category"]).sum()
+    b.index = a.Category.unique()
+    prop = (b.value / totals.value * 100).reset_index()
     
+    # Merge proportions with the counts
+    df_model_merged = (
+        a.merge(prop, left_on = "Category", right_on = "index")
+         .drop(columns=["index"])
+         .rename(columns={"value_x": "Count", "value_y": "Perc"})
+    ).round(2)
+    df_model_merged.loc[:, "Perc"] = df_model_merged.loc[:, "Perc"].astype(str) + "%"
+    df_model_merged.loc[df_model_merged.Target == "0.0", "Perc"] = None
+    
+    return df_model_merged
+
+
+def plot_category_vs_outcome(y: pd.Series, y_prob_cut: np.array, tc: pd.Series):
+
+    ## Replace numbers with nice names
+    categories = ["Green", "Yellow", "Orange", "Red"]
+    
+    plt_df = pd.DataFrame(
+        np.column_stack((y_prob_cut, tc, y)),
+        columns = ["Model Category", "Triage Category", "target"]
+    )
+    plt_df_melt = pd.melt(
+        plt_df, 
+        value_vars = ["Model Category", "Triage Category"],
+        id_vars = "target"
+    )
+    return (
+        ggplot(plt_df_melt, aes("value", fill="factor(target)")) + 
+        geom_bar(stat = "count") + 
+        facet_wrap("variable") + 
+        xlab("Category") + 
+        scale_fill_discrete(name = "Dead in 30 days")
+    )
+    
+    
+def plot_triage_comparison(y, y_prob_cut, tc):
+    """Plots categories stratified by outcome.
+    
+    Stacked bar plot of outcome in each category.
+    
+    Args:
+        y: Targets.
+        y_prob_cut: Cut probabilities.
+        tc: Clinicians triage categories
+        
+    Returns:
+        Plot of categories stratified by outcome, plots split by model.
+    """
+    columns = ["Label", "Category", "Target"]
+    # Split dataframes for simplicity
+    df_model = pd.DataFrame(
+        np.column_stack((["Model"] * len(y_prob_cut), y_prob_cut, y)),
+        columns = columns
+    )
+    df_clinicians = pd.DataFrame(
+        np.column_stack((["Clinicians"] * len(tc), tc, y)),
+        columns = columns
+    )
+    # Merge the prepared data frames
+    t1 = prepare_triage_plot_df(df_model)
+    t2 = prepare_triage_plot_df(df_clinicians)
+    df_plt = pd.concat([t1, t2])
+
+    return (
+        ggplot(df_plt) + 
+        geom_col(aes(x="Category", y="Count", label="Perc", fill="Target")) + 
+        geom_text(aes(x="Category", y="Count", label = "Perc"), va="bottom") + 
+        scale_fill_discrete(name = "Dead in 30 days", labels=["No", "Yes"]) + 
+        facet_wrap("Label") + 
+        xlab("Category") + 
+        ylab("Number of patients")
+    )

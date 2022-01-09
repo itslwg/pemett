@@ -32,12 +32,6 @@ class StackedGeneralizationClassifier():
         self.base_clfs_ = base_clfs
         self.meta_clf_ = meta_clf
        
-        # Splitting setup
-        self.inner_folds = 2
-        self.outer_folds = 2
-        self.inner_loop = StratifiedKFold(n_splits = self.inner_folds)
-        self.outer_loop = StratifiedKFold(n_splits = self.outer_folds)
-        
         # AUC of ROC for each outer fold. See self.cv_outer_loop
         self.roc_aucs = None
         
@@ -136,7 +130,9 @@ class StackedGeneralizationClassifier():
 
         return return_object
 
-    def cv_inner_loop(self, X: pd.DataFrame, y: pd.Series) -> np.ndarray:
+    
+    def cv_inner_loop(self, X: pd.DataFrame, y: pd.Series, 
+                      inner_folds: Optional[int] = 2) -> np.ndarray:
         """Runs inner loop of k-fold cross-validation.
     
         Args: 
@@ -146,6 +142,8 @@ class StackedGeneralizationClassifier():
           Array where each column correspond to the predictions by each
               respective classifier
         """
+        inner_loop = StratifiedKFold(n_splits = inner_folds)
+
         if self.verbose:
             if self.__i == 0 and self.__j == 0:
                 print("Inner loop, each loop:")
@@ -153,7 +151,7 @@ class StackedGeneralizationClassifier():
                     p = round(self.__n[k] / sum(self.__n) * 100, 2)
                     print("\tNumber of {c}'s: ~{v} ({p}%)".format(
                         c=round(k),
-                        v=round(self.__n[k] / self.inner_folds),
+                        v=round(self.__n[k] / inner_folds),
                         p=p
                     ))
 
@@ -164,7 +162,7 @@ class StackedGeneralizationClassifier():
                 estimator=clf,
                 X=X,
                 y=y,
-                cv=self.inner_loop,
+                cv=inner_loop,
                 method="predict_proba" if self.use_probas else "predict"
             )
             p = predictions[:, 1] if self.use_probas else predictions
@@ -174,7 +172,9 @@ class StackedGeneralizationClassifier():
 
 
     def cv_outer_loop(self, all_hyper_parameters: list,
-                      X: pd.DataFrame, y: pd.Series, refit=True) -> object:
+                      X: pd.DataFrame, y: pd.Series, refit=True,
+                      inner_folds: Optional[int] = 5, 
+                      outer_folds: Optional[int] = 2) -> object:
         """Runs outer cross-validation.
         
         Gets the break points for continous proabilities that 
@@ -191,10 +191,11 @@ class StackedGeneralizationClassifier():
         Returns:
             The StackedGeneralizationClassifier itself.
         """
+        outer_loop = StratifiedKFold(n_splits = outer_folds)
         ## Setup for recording auc from each combination of hps
         roc_aucs = pd.DataFrame(
-            data = np.zeros((len(all_hyper_parameters), self.outer_folds)),
-            columns = range(1, self.outer_folds + 1)
+            data = np.zeros((len(all_hyper_parameters), outer_folds)),
+            columns = range(1, outer_folds + 1)
         )
         
         for i, hyper_parameters in enumerate(tqdm(all_hyper_parameters)):
@@ -203,7 +204,7 @@ class StackedGeneralizationClassifier():
 
             self.hyper_parameters = hyper_parameters
 
-            for j, (train_index, val_index) in enumerate(self.outer_loop.split(X, y)):
+            for j, (train_index, val_index) in enumerate(outer_loop.split(X, y)):
 
                 self.__j = j
             

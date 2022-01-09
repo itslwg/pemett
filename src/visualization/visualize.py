@@ -63,6 +63,29 @@ def plot_precision_recall(y_true, y_pred):
     return p
 
 
+def plot_category_vs_outcome(y: pd.Series, y_prob_cut: np.array, tc: pd.Series):
+
+    ## Replace numbers with nice names
+    categories = ["Green", "Yellow", "Orange", "Red"]
+    
+    plt_df = pd.DataFrame(
+        np.column_stack((y_prob_cut, tc, y)),
+        columns = ["Model Category", "Triage Category", "target"]
+    )
+    plt_df_melt = pd.melt(
+        plt_df, 
+        value_vars = ["Model Category", "Triage Category"],
+        id_vars = "target"
+    )
+    return (
+        ggplot(plt_df_melt, aes("value", fill="factor(target)")) + 
+        geom_bar(stat = "count") + 
+        facet_wrap("variable") + 
+        xlab("Category") + 
+        scale_fill_discrete(name = "Dead in 30 days")
+    )
+
+
 def prepare_triage_plot_df(df_model):
     """Helper to create dataframe for plotting survivial within tc."""
     a = (
@@ -89,29 +112,6 @@ def prepare_triage_plot_df(df_model):
     return df_model_merged
 
 
-def plot_category_vs_outcome(y: pd.Series, y_prob_cut: np.array, tc: pd.Series):
-
-    ## Replace numbers with nice names
-    categories = ["Green", "Yellow", "Orange", "Red"]
-    
-    plt_df = pd.DataFrame(
-        np.column_stack((y_prob_cut, tc, y)),
-        columns = ["Model Category", "Triage Category", "target"]
-    )
-    plt_df_melt = pd.melt(
-        plt_df, 
-        value_vars = ["Model Category", "Triage Category"],
-        id_vars = "target"
-    )
-    return (
-        ggplot(plt_df_melt, aes("value", fill="factor(target)")) + 
-        geom_bar(stat = "count") + 
-        facet_wrap("variable") + 
-        xlab("Category") + 
-        scale_fill_discrete(name = "Dead in 30 days")
-    )
-    
-    
 def plot_triage_comparison(y, y_prob_cut, tc):
     """Plots categories stratified by outcome.
     
@@ -145,7 +145,9 @@ def plot_triage_comparison(y, y_prob_cut, tc):
         geom_col(aes(x="Category", y="Count", label="Perc", fill="Target")) + 
         geom_text(aes(x="Category", y="Count", label = "Perc"), va="bottom") + 
         scale_fill_discrete(name = "Dead in 30 days", labels=["No", "Yes"]) + 
+        scale_x_discrete(labels = ["Green", "Yellow", "Orange", "Red"]) + 
         facet_wrap("Label") + 
         xlab("Category") + 
         ylab("Number of patients")
     )
+    

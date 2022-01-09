@@ -131,7 +131,7 @@ class StackedGeneralizationClassifier():
             )
             return_object = (
                 y_pred[:, 1],
-                np.array(y_pred_cut)
+                np.array(y_pred_cut).astype(np.float64)
             )
 
         return return_object

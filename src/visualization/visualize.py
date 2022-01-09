@@ -8,6 +8,38 @@ from sklearn.metrics import (
     precision_recall_curve
 )
 
+from tableone import TableOne
+
+from src.data.transform import parse_value_labels
+
+
+def create_sample_characteristics_table(df: pd.DataFrame,
+                                        data_dictionary: pd.DataFrame,
+                                        **kwargs) -> TableOne:
+    """Generates sample characteristics table
+    
+    Args:
+        df: Full sample.
+        kwargs: Key-word arguments for tableone.TableOne.
+        
+    Returns:
+        The summary table.
+    """
+    # Get variable value labels
+    vvls = parse_value_labels(data_dictionary)
+    df.replace(vvls, inplace = True)
+    
+    # Better labels for all variables
+    vns = data_dictionary.loc[:, "Variable name (vn)"]
+    ls = data_dictionary.loc[:, "Label (l)"]
+    labels = {vn: l for vn, l in zip(vns, ls)}
+
+    return TableOne(
+        df,
+        rename=labels,
+        **kwargs
+    )
+
 
 def plot_roc(y_true, y_pred):
     """Plots ROC using plotnine."""

@@ -85,9 +85,9 @@ def compute_performance(y_prob: np.array, y_pred: np.array,
         y_pred=y_pred, 
         average="macro"
     )
-    r = dict(roc_auc = roc_auc, prec = prec, rec = rec)
+    r = dict(roc_auc_con = roc_auc, prec = prec, rec = rec)
     if y_pred_cut is not None:
-        auc_metric_labels = ["auc_model_model", "auc_model_tc"]
+        auc_metric_labels = ["roc_auc_cut", "roc_auc_model_model", "roc_auc_model_tc"]
         # Calculate alternate aucs
         roc_auc_cut = roc_auc_score(
             y_true=y_true, 
@@ -99,7 +99,7 @@ def compute_performance(y_prob: np.array, y_pred: np.array,
         )
         auc_mm = roc_auc - roc_auc_cut
         auc_mtc = roc_auc - roc_auc_tc
-        aucs = [auc_mm, auc_mtc]
+        aucs = [roc_auc_cut, auc_mm, auc_mtc]
         # Calculate nri
         nri_metrics = ["nri", "nri_plus", "nri_minus"]
         nri = calculate_nri(

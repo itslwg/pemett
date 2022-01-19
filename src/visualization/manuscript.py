@@ -1,10 +1,22 @@
 import pandas as pd
+
+from typing import Optional
 from src.visualization.visualize import create_sample_characteristics_table
 
-def generate_sample_characteristics_table(outcome_variable: str):
+def generate_sample_characteristics_table(outcome_variable: str,
+                                          file_name: Optional[str] = None,
+                                          tables_dir: str = "./reports/tables/"):
     """Prints the table 1 for input outcome variable.
     
     Wrapper to tidy manuscript notebook
+    
+    Args:
+        outcome_variable: Name of the outcome variable. E.g. s30d.
+        file_name: File to which the table should be saved.
+        tables_dir: Directory in which the tables lay.
+        
+    Returns:
+        Table 1 as pandas dataframe.
     """
     # Read relevant files
     data_dir = "./data/"
@@ -36,6 +48,8 @@ def generate_sample_characteristics_table(outcome_variable: str):
     ).assign(
         Holdout=ho
     )
+    if file_name is not None: 
+        tto.to_csv(tables_dir + file_name)
 
     return tto
     

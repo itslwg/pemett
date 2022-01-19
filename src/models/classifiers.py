@@ -22,11 +22,13 @@ class StackedGeneralizationClassifier():
     """
     def __init__(self, base_clfs, meta_clf, 
                  use_probas: bool = True,
-                 verbose: bool = False):
+                 verbose: bool = False,
+                 results_dir: bool = None):
         self.base_clfs = base_clfs
         self.meta_clf = meta_clf
         self.use_probas = use_probas
         self.verbose = verbose
+        self.results_dir = results_dir
         
         # Copy classifiers for fitting
         self.base_clfs_ = base_clfs
@@ -59,6 +61,7 @@ class StackedGeneralizationClassifier():
             ks = [s for s in self.hyper_parameters.keys() if nm in s]
             clf_params = {k.split("__", 1)[1]: self.hyper_parameters.get(k) for k in ks}
             clf.set_params(**clf_params)
+
         # Get meta features from features
         X_meta = self.cv_inner_loop(X = X, y = y)
         
@@ -72,7 +75,8 @@ class StackedGeneralizationClassifier():
 
 
     def predict_meta_features(self, X: pd.DataFrame, 
-                              use_probas: Optional[bool] = None) -> np.ndarray:
+                              use_probas: Optional[bool] = None,
+                              save: bool = False) -> np.ndarray:
         """Uses base classifiers to get meta features.
         
         Args:
@@ -84,6 +88,8 @@ class StackedGeneralizationClassifier():
             Meta features, i.e. the predicted probabilities by base
             classifiers.
         """
+        do_save = save and self.results_dir is not None
+        
         if use_probas is None: use_probas = self.use_probas
 
         per_model_predictions = []
@@ -96,7 +102,8 @@ class StackedGeneralizationClassifier():
         return predictions
         
 
-    def predict(self, X, use_probas: bool = True) -> tuple:
+    def predict(self, X, use_probas: bool = True,
+                save: bool = False) -> tuple:
         """Predicts using meta classifier
         
         Args:
@@ -107,25 +114,35 @@ class StackedGeneralizationClassifier():
         Returns:
             Tuple of predicted proability of 1s and binned predictions.
         """
+        do_save = save and self.results_dir is not None
+
         # Predict using validation meta features
         X_meta = self.predict_meta_features(X, use_probas = self.use_probas)
-        y_pred = (
+        y_prob = (
             self.meta_clf_.predict_proba(X_meta) if use_probas 
             else self.meta_clf_.predict(X_meta)
+        )[:, 1]
+        if do_save: pd.Series(y_prob).to_csv(
+            self.results_dir + "y_holdout_prob_con"
         )
 
-        return_object = y_pred
+        return_object = y_prob
         if use_probas:
-            y_pred_cut = pd.cut(
-                x=y_pred[:, 1],
+            y_prob_cut = pd.cut(
+                x=y_prob,
                 bins=self.hyper_parameters["breaks"],
                 labels=[0, 1, 2, 3],
                 right=True,
                 include_lowest=False
             )
+            
+            if do_save: pd.Series(y_prob_cut).to_csv(
+                self.results_dir + "y_holdout_prob_cut"
+            )
+
             return_object = (
-                y_pred[:, 1],
-                np.array(y_pred_cut).astype(float)
+                y_prob,
+                np.array(y_prob_cut).astype(float)
             )
 
         return return_object
